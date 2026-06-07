@@ -1,0 +1,19 @@
+{
+  "name": "system-monitor",
+  "version": "0.2.0",
+  "description": "Local system & hardware monitoring MCP server (CPU, memory, disk, network, processes, GPU, sensors, SMART) with a unified health roll-up.",
+  "type": "commonjs",
+  "private": true,
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test",
+    "build": "node scripts/build-plugin.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "systeminformation": "^5.31.7"
+  },
+  "keywords": ["system", "monitor", "hardware", "smart", "gpu", "sensors", "mcp", "plugin"],
+  "license": "MIT"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "system-monitor",
+  "version": "0.2.0",
+  "description": "Local system & hardware monitor: CPU, memory, disks, network, processes, GPU, sensors (temps/fans), and SMART drive health — with a unified health roll-up. Runs locally; no data leaves the machine.",
+  "author": { "name": "Arthur" },
+  "keywords": ["system", "monitor", "hardware", "smart", "smartctl", "nvidia", "gpu", "sensors", "temperature", "cpu", "disk", "mcp"]
+}
