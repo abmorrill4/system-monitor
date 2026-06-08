@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "system-monitor": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/server/server.js"]
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/system-monitor.exe",
+      "args": []
     }
   }
 }

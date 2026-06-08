@@ -1,6 +1,14 @@
-node_modules/
+# Rust
+/target/
+
+# Staged plugin binary (produced by scripts/build-plugin.ps1)
+/bin/
+
+# Build output
 dist/
 *.plugin
 *.log
+
+# OS
 .DS_Store
 Thumbs.db

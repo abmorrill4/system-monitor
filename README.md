@@ -34,7 +34,8 @@ All data stays on your machine.
 
 ## Data sources & requirements
 
-- **General metrics**: the bundled [`systeminformation`](https://github.com/sebhildebrandt/systeminformation) library. No setup, no elevation.
+- **General metrics**: the [`sysinfo`](https://docs.rs/sysinfo) crate, compiled
+  into the binary. No setup, no elevation, no Node runtime.
 - **GPU**: `nvidia-smi` (ships with the NVIDIA driver). NVIDIA only.
 - **Sensors**: [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) running as Administrator, with its web server enabled (Options -> Remote Web Server, default port 8085) or accessible via WMI. Set `LHM_URL` to override the web server address.
 - **Drive health**: `smartctl` (`winget install smartmontools.smartmontools`). Auto-detected in `C:\Program Files\smartmontools\bin`; override with `SMARTCTL_PATH`.
@@ -47,8 +48,26 @@ for full readings. Everything degrades gracefully when a source is unavailable.
 
 ## Development
 
+Written in Rust; ships as a single ~0.7 MB static binary (no Node).
+
 ```bash
-npm install      # fetch systeminformation
-npm test         # node:test: pure parsers + health logic + protocol/snapshot
-npm run build    # produce dist/system-monitor.plugin (bundles node_modules)
+cargo test                      # pure parsers + health logic + stdio protocol/snapshot
+cargo run                       # run the MCP server on stdio
+cargo build --release           # optimized binary -> target/release/system-monitor.exe
+pwsh scripts/build-plugin.ps1   # dist/system-monitor.plugin (bundles the binary + skill)
 ```
+
+### Building on Windows
+
+This project uses the GNU Rust toolchain to avoid a Visual Studio dependency:
+
+```powershell
+rustup toolchain install stable-x86_64-pc-windows-gnu
+rustup default stable-x86_64-pc-windows-gnu
+winget install BrechtSanders.WinLibs.POSIX.UCRT   # full mingw-w64 (dlltool/as) for linking
+```
+
+Make sure the WinLibs `mingw64\bin` directory is on `PATH` before building.
+
+> Currently packaged as a Windows x64 plugin. Other platforms build from source
+> with `cargo build --release` (the code is cross-platform via `sysinfo`).

@@ -1,6 +1,6 @@
 ---
 name: system-monitor
-description: Monitor local computer health and hardware. Use when the user asks to "check my system", "how's my PC doing", "system health", "check my drives", "is my SSD dying", "CPU/GPU temperature", "how much RAM/disk is free", "what's using my CPU", "top processes", "network usage", "fan speeds", "run a health check", or asks about the condition of any hardware component. Backed by the system-monitor MCP server (systeminformation, smartctl, nvidia-smi, LibreHardwareMonitor).
+description: Monitor local computer health and hardware. Use when the user asks to "check my system", "how's my PC doing", "system health", "check my drives", "is my SSD dying", "CPU/GPU temperature", "how much RAM/disk is free", "what's using my CPU", "top processes", "network usage", "fan speeds", "run a health check", or asks about the condition of any hardware component. Backed by the system-monitor MCP server (sysinfo, smartctl, nvidia-smi, LibreHardwareMonitor).
 ---
 
 # System Monitor
@@ -31,7 +31,7 @@ Returns `overall` (OK / WARNING / CRITICAL), a `summary`, a prioritized `issues`
 
 ## Data sources and their limits
 
-- **General metrics** (cpu, memory, disks, network, processes, host) come from the `systeminformation` library and work without elevation.
+- **General metrics** (cpu, memory, disks, network, processes, host) come from the `sysinfo` crate and work without elevation.
 - **CPU/board temps and fans** require **LibreHardwareMonitor** running (web server on port 8085, or WMI). If `get_sensors` is unavailable, fall back to GPU temp (nvidia-smi) and drive temps (smartctl), and tell the user how to enable LHM.
 - **GPU** uses `nvidia-smi` (NVIDIA only); AMD/Intel return an unavailable note.
 - **Drive health** uses `smartctl` and needs **Administrator** privileges on Windows.
