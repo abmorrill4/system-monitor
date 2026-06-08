@@ -3,7 +3,8 @@
 // Reading SMART data on Windows requires Administrator; the verdict surfaces a
 // NEEDS_ELEVATION state when smartctl reports a permission problem.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
@@ -242,7 +243,103 @@ pub fn summarize(json: &Value) -> Value {
     s
 }
 
+// ---- Elevated-helper cache ------------------------------------------------
+//
+// Reading SMART on Windows needs Administrator. So a non-elevated server can
+// still report drive health, an elevated scheduled task periodically runs
+// `system-monitor --refresh-smart-cache`, which writes a full scan to a shared
+// cache file. get_drive_health() falls back to that cache when a live scan
+// can't see the drives.
+
+fn cache_path() -> PathBuf {
+    if let Ok(p) = std::env::var("SMART_CACHE_PATH") {
+        return PathBuf::from(p);
+    }
+    let base = std::env::var("ProgramData").unwrap_or_else(|_| r"C:\ProgramData".to_string());
+    Path::new(&base).join("system-monitor").join("smart-cache.json")
+}
+
+fn now_unix() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+}
+
+/// Run a full drive-health scan and write it to the shared cache file. Invoked
+/// by the elevated scheduled-task helper. Returns the path written.
+pub fn refresh_cache() -> Result<String, SmartError> {
+    let report = get_drive_health_live(&json!({}))?;
+    let path = cache_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| SmartError::new(e.to_string(), "error"))?;
+    }
+    let doc = json!({ "generated_at_unix": now_unix(), "report": report });
+    std::fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap_or_default())
+        .map_err(|e| SmartError::new(e.to_string(), "error"))?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+fn read_cache() -> Option<(Value, u64)> {
+    let bytes = std::fs::read(cache_path()).ok()?;
+    let doc: Value = serde_json::from_slice(&bytes).ok()?;
+    let ts = doc.get("generated_at_unix").and_then(|v| v.as_u64()).unwrap_or(0);
+    let report = doc.get("report")?.clone();
+    Some((report, now_unix().saturating_sub(ts)))
+}
+
+/// True when a live scan actually saw at least one readable drive (not empty,
+/// not all NEEDS_ELEVATION / ERROR).
+fn live_has_real_reports(v: &Value) -> bool {
+    v.get("reports")
+        .and_then(|r| r.as_array())
+        .map(|reports| {
+            !reports.is_empty()
+                && reports.iter().any(|r| {
+                    !matches!(
+                        r.get("verdict").and_then(|x| x.as_str()),
+                        Some("NEEDS_ELEVATION") | Some("ERROR") | None
+                    )
+                })
+        })
+        .unwrap_or(false)
+}
+
+fn annotate_cache(cached: &mut Value, age: u64) {
+    cached["source"] = json!("elevated-helper-cache");
+    cached["cache_age_seconds"] = json!(age);
+    if age > 6 * 3600 {
+        cached["cache_note"] = json!(format!(
+            "Cached SMART data is ~{} h old; the elevated helper may not be running. Run scripts/install-smart-helper.ps1 as Administrator, or run Claude elevated.",
+            age / 3600
+        ));
+    }
+}
+
 pub fn get_drive_health(args: &Value) -> Result<Value, SmartError> {
+    // A specific device is always read live.
+    if args.get("device").and_then(|v| v.as_str()).is_some() {
+        return get_drive_health_live(args);
+    }
+    // All-drives: try live; if it can't see drives (not elevated) or errors,
+    // fall back to the elevated helper's cache when present.
+    match get_drive_health_live(args) {
+        Ok(live) if live_has_real_reports(&live) => Ok(live),
+        Ok(live) => match read_cache() {
+            Some((mut cached, age)) => {
+                annotate_cache(&mut cached, age);
+                Ok(cached)
+            }
+            None => Ok(live),
+        },
+        Err(e) => match read_cache() {
+            Some((mut cached, age)) => {
+                annotate_cache(&mut cached, age);
+                Ok(cached)
+            }
+            None => Err(e),
+        },
+    }
+}
+
+fn get_drive_health_live(args: &Value) -> Result<Value, SmartError> {
     let device = args.get("device").and_then(|v| v.as_str());
     let dtype = args.get("type").and_then(|v| v.as_str());
 

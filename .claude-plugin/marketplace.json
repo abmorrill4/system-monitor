@@ -1,0 +1,21 @@
+{
+  "name": "abmorrill4",
+  "owner": {
+    "name": "Arthur",
+    "url": "https://github.com/abmorrill4"
+  },
+  "description": "Local system & hardware monitoring for Claude.",
+  "plugins": [
+    {
+      "name": "system-monitor",
+      "source": ".",
+      "description": "Monitor local system & hardware health (CPU, memory, disk, network, processes, GPU, sensors, SMART drive health) with a unified health roll-up. Self-contained Rust binary; Windows x64. No data leaves the machine.",
+      "version": "0.3.0",
+      "author": { "name": "Arthur" },
+      "homepage": "https://github.com/abmorrill4/system-monitor",
+      "repository": "https://github.com/abmorrill4/system-monitor",
+      "license": "MIT",
+      "keywords": ["system", "monitor", "hardware", "smart", "gpu", "sensors", "cpu", "disk"]
+    }
+  ]
+}

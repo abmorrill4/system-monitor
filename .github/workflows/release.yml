@@ -1,0 +1,48 @@
+name: release
+
+# Build, test, and publish a GitHub Release on every v* tag.
+#   git tag v0.3.0 && git push origin v0.3.0
+#
+# Runs on windows-latest, which already has the MSVC toolchain, so no mingw
+# setup is needed in CI (local dev uses the GNU toolchain; both produce a valid
+# x86_64 Windows binary). Assets: the bare .exe, the .plugin bundle, and
+# SHA256SUMS.txt for verification.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build + package plugin
+        shell: pwsh
+        run: pwsh -File scripts/build-plugin.ps1
+
+      - name: Stage assets + checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          Copy-Item target/release/system-monitor.exe release-assets/system-monitor-windows-x64.exe
+          Copy-Item dist/system-monitor.plugin release-assets/system-monitor.plugin
+          Get-FileHash release-assets/* -Algorithm SHA256 |
+            ForEach-Object { '{0}  {1}' -f $_.Hash.ToLower(), (Split-Path $_.Path -Leaf) } |
+            Set-Content release-assets/SHA256SUMS.txt
+          Get-Content release-assets/SHA256SUMS.txt
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
